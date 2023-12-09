@@ -32,7 +32,7 @@ typedef unsigned char byte;
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define PUTCHAR_PROTOTYPE int __io_putchar(int ch)
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -41,6 +41,7 @@ typedef unsigned char byte;
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN PV */
 
@@ -49,6 +50,7 @@ typedef unsigned char byte;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_USART1_UART_Init(void);
 /* USER CODE BEGIN PFP */
 uint32_t DWT_Delay_Init(void);
 __STATIC_INLINE void DWT_Delay_ms(volatile uint32_t au32_milliseconds)
@@ -65,11 +67,13 @@ __STATIC_INLINE void DWT_Delay_ms(volatile uint32_t au32_milliseconds)
 volatile byte melbus_ReceivedByte = 0;
 volatile byte melbus_Bitposition = 7;
 volatile bool byteIsRead = false;
-int __io_putchar(int ch)
+PUTCHAR_PROTOTYPE
 {
- // Write character to ITM ch.0
- ITM_SendChar(ch);
- return(ch);
+  /* Place your implementation of fputc here */
+  /* e.g. write a character to the USART1 and Loop until the end of transmission */
+  HAL_UART_Transmit(&huart1, (uint8_t *)&ch, 1, 0xFFFF);
+
+  return ch;
 }
 /* USER CODE END 0 */
 
@@ -80,7 +84,8 @@ int __io_putchar(int ch)
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-
+	//static byte lastByte = 0;
+	bool print = false;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -101,25 +106,35 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
-
+  printf("Sniffer started\r\n");
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  /* USER CODE END WHILE */
+    /* USER CODE END WHILE */
 
-	  /* USER CODE BEGIN 3 */
+    /* USER CODE BEGIN 3 */
+	//  byte melbus_log[99];
+	 // byte byteCounter = 1;
 	  bool busy = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4);
 	  while (!busy) {
 		  if (byteIsRead) {
 			  byteIsRead = false;
-			  printf("%#x  ", melbus_ReceivedByte);
+	//		  lastByte = melbus_ReceivedByte;
+	//		  melbus_log[byteCounter - 1] = lastByte;
+			  printf("0x%02X  ", melbus_ReceivedByte);
+			  print = true;
 		  }
+		  busy = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4);
 	  }
-	  printf("\n");
+	  if (print) {
+		  print = false;
+	  printf("\r\n\n");
+	  }
   }
   /* USER CODE END 3 */
 }
@@ -147,7 +162,7 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
   RCC_OscInitStruct.PLL.PLLM = 8;
-  RCC_OscInitStruct.PLL.PLLN = 50;
+  RCC_OscInitStruct.PLL.PLLN = 100;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
   RCC_OscInitStruct.PLL.PLLQ = 4;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
@@ -161,13 +176,46 @@ void SystemClock_Config(void)
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_1) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_3) != HAL_OK)
   {
     Error_Handler();
   }
+}
+
+/**
+  * @brief USART1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART1_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART1_Init 0 */
+
+  /* USER CODE END USART1_Init 0 */
+
+  /* USER CODE BEGIN USART1_Init 1 */
+
+  /* USER CODE END USART1_Init 1 */
+  huart1.Instance = USART1;
+  huart1.Init.BaudRate = 576000;
+  huart1.Init.WordLength = UART_WORDLENGTH_8B;
+  huart1.Init.StopBits = UART_STOPBITS_1;
+  huart1.Init.Parity = UART_PARITY_NONE;
+  huart1.Init.Mode = UART_MODE_TX_RX;
+  huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART1_Init 2 */
+
+  /* USER CODE END USART1_Init 2 */
+
 }
 
 /**
